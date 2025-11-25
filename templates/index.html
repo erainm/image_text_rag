@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multimodal RAG System</title>
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --success-color: #4cc9f0;
+            --danger-color: #f72585;
+            --warning-color: #f8961e;
+            --dark-color: #1d3557;
+            --light-color: #f8f9fa;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: var(--dark-color);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            padding: 30px;
+        }
+
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel {
+            background: var(--light-color);
+            border-radius: 10px;
+            padding: 25px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .panel-title {
+            color: var(--dark-color);
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--primary-color);
+        }
+
+        .status-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .status-card {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            text-align: center;
+        }
+
+        .status-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 10px 0;
+        }
+
+        .btn {
+            background: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+        }
+
+        .btn-success {
+            background: var(--success-color);
+        }
+
+        .btn-danger {
+            background: var(--danger-color);
+        }
+
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .upload-area:hover {
+            border-color: var(--primary-color);
+            background: rgba(67, 97, 238, 0.05);
+        }
+
+        .upload-area i {
+            font-size: 3rem;
+            color: #ccc;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        .chat-container {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: white;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 15px;
+            border-radius: 18px;
+            max-width: 80%;
+        }
+
+        .user-message {
+            background: var(--primary-color);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+
+        .bot-message {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        textarea {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .image-gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .image-item {
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+
+        .image-item img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            display: block;
+        }
+
+        .image-caption {
+            padding: 10px;
+            background: white;
+            font-size: 0.85rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 4px solid rgba(0,0,0,0.1);
+            border-radius: 50%;
+            border-top: 4px solid var(--primary-color);
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .result-message {
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+        }
+
+        .result-success {
+            background: rgba(76, 201, 240, 0.2);
+            border: 1px solid var(--success-color);
+            color: #333;
+        }
+
+        .result-error {
+            background: rgba(247, 37, 133, 0.2);
+            border: 1px solid var(--danger-color);
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📚 Multimodal RAG System</h1>
+            <p>Document Processing & Intelligent Q&A with Image Recognition</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Left Panel - System Status & Upload -->
+            <div class="panel">
+                <h2 class="panel-title">🖥️ System Control</h2>
+
+                <div class="status-grid">
+                    <div class="status-card">
+                        <div>System Status</div>
+                        <div class="status-value" id="systemStatus">Checking...</div>
+                    </div>
+                    <div class="status-card">
+                        <div>Memory Usage</div>
+                        <div class="status-value" id="memoryUsage">-</div>
+                    </div>
+                    <div class="status-card">
+                        <div>Data Entries</div>
+                        <div class="status-value" id="entityCount">0</div>
+                    </div>
+                </div>
+
+                <button class="btn" onclick="refreshStatus()">🔄 Refresh Status</button>
+                <button class="btn btn-danger" onclick="clearDatabase()">🗑️ Clear Database</button>
+
+                <h3 class="panel-title" style="margin-top: 30px;">📄 Document Upload</h3>
+                <div class="upload-area" id="dropArea" onclick="document.getElementById('fileInput').click()">
+                    <div>📁</div>
+                    <p>Drag & Drop PDF files here or click to select</p>
+                    <input type="file" id="fileInput" accept=".pdf" style="display: none;" onchange="handleFileSelect(event)">
+                </div>
+                <div id="fileName" style="margin: 10px 0; font-weight: bold;"></div>
+                <button class="btn btn-success" onclick="uploadDocument()" id="uploadBtn" disabled>📤 Upload Document</button>
+                <div id="uploadResult"></div>
+
+                <h3 class="panel-title" style="margin-top: 30px;">🖼️ Extracted Images</h3>
+                <div id="imageGallery" class="image-gallery">
+                    <p>No images extracted yet. Upload a document with images.</p>
+                </div>
+            </div>
+
+            <!-- Right Panel - Chat Interface -->
+            <div class="panel">
+                <h2 class="panel-title">💬 Intelligent Q&A</h2>
+                <div class="chat-container" id="chatContainer">
+                    <div class="message bot-message">
+                        Hello! I'm your intelligent assistant. Upload documents and ask me questions.
+                    </div>
+                </div>
+                <textarea id="questionInput" placeholder="Ask your question here..." rows="3"></textarea>
+                <button class="btn" onclick="askQuestion()">❓ Ask Question</button>
+
+                <div style="margin-top: 30px;">
+                    <h3 class="panel-title">⚙️ Answer Mode</h3>
+                    <select id="answerMode" onchange="setAnswerMode()" style="width: 100%; padding: 10px; margin-bottom: 10px;">
+                        <option value="balanced">Balanced Mode</option>
+                        <option value="strict">Strict Mode</option>
+                        <option value="extractive">Extractive Mode</option>
+                    </select>
+                    <div id="modeDescription" style="font-size: 0.9rem; color: #666;">
+                        Balanced Mode: Based on original text with appropriate interpretation
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize when page loads
+        window.onload = function() {
+            refreshStatus();
+            loadImages();
+            getCurrentMode();
+        };
+
+        // Handle file selection
+        function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (file && file.type === 'application/pdf') {
+                document.getElementById('fileName').textContent = `Selected: ${file.name}`;
+                document.getElementById('uploadBtn').disabled = false;
+                window.currentFile = file;
+            } else {
+                alert('Please select a PDF file');
+            }
+        }
+
+        // Drag and drop functionality
+        const dropArea = document.getElementById('dropArea');
+        dropArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = '#4361ee';
+            dropArea.style.backgroundColor = 'rgba(67, 97, 238, 0.1)';
+        });
+
+        dropArea.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = '#ccc';
+            dropArea.style.backgroundColor = '';
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropArea.style.borderColor = '#ccc';
+            dropArea.style.backgroundColor = '';
+
+            if (e.dataTransfer.files.length) {
+                const fileInput = document.getElementById('fileInput');
+                fileInput.files = e.dataTransfer.files;
+                handleFileSelect({target: fileInput});
+            }
+        });
+
+        // Refresh system status
+        function refreshStatus() {
+            // System status
+            fetch('/api/system_status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('systemStatus').textContent = data.status;
+                    document.getElementById('memoryUsage').textContent =
+                        `${data.memory.used_gb}GB / ${data.memory.total_gb}GB`;
+                })
+                .catch(error => console.error('System status error:', error));
+
+            // Database status
+            fetch('/api/database_status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('entityCount').textContent = data.entity_count || 0;
+                })
+                .catch(error => console.error('Database status error:', error));
+        }
+
+        // Upload document
+        function uploadDocument() {
+            if (!window.currentFile) {
+                alert('Please select a file first');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('file', window.currentFile);
+
+            const resultDiv = document.getElementById('uploadResult');
+            resultDiv.innerHTML = '<div class="loading"><div class="spinner"></div><p>Processing document...</p></div>';
+
+            fetch('/api/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    resultDiv.innerHTML = `<div class="result-message result-success">✅ ${data.success}</div>`;
+                    refreshStatus();
+                    loadImages(); // Reload images after upload
+                } else {
+                    resultDiv.innerHTML = `<div class="result-message result-error">❌ ${data.error}</div>`;
+                }
+            })
+            .catch(error => {
+                resultDiv.innerHTML = `<div class="result-message result-error">❌ Upload failed: ${error.message}</div>`;
+            });
+        }
+
+        // Ask question
+        function askQuestion() {
+            const question = document.getElementById('questionInput').value.trim();
+            if (!question) {
+                alert('Please enter a question');
+                return;
+            }
+
+            const chatContainer = document.getElementById('chatContainer');
+
+            // Show user message
+            const userMessage = document.createElement('div');
+            userMessage.className = 'message user-message';
+            userMessage.textContent = question;
+            chatContainer.appendChild(userMessage);
+
+            // Show thinking indicator
+            const thinkingMessage = document.createElement('div');
+            thinkingMessage.className = 'message bot-message';
+            thinkingMessage.innerHTML = '<div class="loading" style="display: inline-block;"><div class="spinner" style="width: 20px; height: 20px; border-width: 3px;"></div> Thinking...</div>';
+            thinkingMessage.id = 'thinkingMessage';
+            chatContainer.appendChild(thinkingMessage);
+
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            fetch('/api/ask', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ question: question })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('thinkingMessage').remove();
+
+                const botMessage = document.createElement('div');
+                botMessage.className = 'message bot-message';
+                botMessage.innerHTML = data.answer || data.error;  // Use innerHTML instead of textContent
+                chatContainer.appendChild(botMessage);
+
+                document.getElementById('questionInput').value = '';
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            })
+            .catch(error => {
+                document.getElementById('thinkingMessage').remove();
+
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'message bot-message';
+                errorMessage.textContent = `❌ Error: ${error.message}`;
+                chatContainer.appendChild(errorMessage);
+
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        }
+
+        // Clear database
+        function clearDatabase() {
+            if (!confirm('Are you sure you want to clear the database? All processed documents will be deleted.')) {
+                return;
+            }
+
+            fetch('/api/clear_database', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Database cleared successfully');
+                    refreshStatus();
+                    document.getElementById('imageGallery').innerHTML = '<p>No images extracted yet. Upload a document with images.</p>';
+                } else {
+                    alert(`Clear failed: ${data.error}`);
+                }
+            })
+            .catch(error => {
+                alert(`Clear failed: ${error.message}`);
+            });
+        }
+
+        function displayImageWithFallback(imgElement, imageUrl) {
+            imgElement.onerror = function() {
+                this.parentElement.innerHTML = '<div class="image-placeholder">Image not available</div>';
+            };
+            imgElement.src = imageUrl;
+        }
+
+        // Load extracted images
+        function loadImages() {
+            fetch('/api/debug/images')
+                .then(response => response.json())
+                .then(data => {
+                    const gallery = document.getElementById('imageGallery');
+                    if (data.stats && data.stats.total_images > 0) {
+                        let html = '';
+                        data.all_images.forEach(img => {
+                            if (img.image_url) {
+                                html += `
+                                    <div class="image-item">
+                                        <img src="${img.image_url}" alt="${img.content}" onerror="this.parentElement.style.display='none'">
+                                        <div class="image-caption">${img.content.substring(0, 50)}...</div>
+                                    </div>
+                                `;
+                            }
+                        });
+                        gallery.innerHTML = html || '<p>No displayable images found</p>';
+                    } else {
+                        gallery.innerHTML = '<p>No images extracted yet. Upload a document with images.</p>';
+                    }
+                })
+                .catch(error => {
+                    console.error('Image loading error:', error);
+                    document.getElementById('imageGallery').innerHTML = '<p>Error loading images</p>';
+                });
+        }
+
+        // Set answer mode
+        function setAnswerMode() {
+            const mode = document.getElementById('answerMode').value;
+            const descriptions = {
+                'strict': 'Strict Mode: Based strictly on original text, no inference allowed',
+                'extractive': 'Extractive Mode: Direct combination of original text fragments',
+                'balanced': 'Balanced Mode: Based on original text with appropriate interpretation'
+            };
+
+            document.getElementById('modeDescription').textContent = descriptions[mode];
+
+            fetch('/api/set_answer_mode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ mode: mode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Mode set:', data);
+            })
+            .catch(error => {
+                console.error('Mode setting error:', error);
+            });
+        }
+
+        // Get current answer mode
+        function getCurrentMode() {
+            fetch('/api/get_answer_mode')
+                .then(response => response.json())
+                .then(data => {
+                    if (data.current_mode) {
+                        document.getElementById('answerMode').value = data.current_mode;
+                        setAnswerMode(); // Update description
+                    }
+                })
+                .catch(error => {
+                    console.error('Get mode error:', error);
+                });
+        }
+
+        // Enter key for asking questions
+        document.getElementById('questionInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                askQuestion();
+            }
+        });
+    </script>
+</body>
+</html>
